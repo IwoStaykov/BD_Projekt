@@ -136,7 +136,9 @@ INSERT INTO Modyfikacje_pom (id, id_parti, pom_p, pom_d, data, id_pracownik, eta
 
 
 
--- 2. Tabela: Uprawnienia
+-- Wyzwalacze i automatyzacje
+
+
 -- Wyzwalacz: Blokowanie zmian przez osoby inne niż 'Menedżer'
 CREATE TRIGGER restrict_permissions_modifications 
 BEFORE INSERT ON Uprawnienia
@@ -168,23 +170,21 @@ BEGIN
     END IF;
 END;
 
--- 3. Tabela: Pomieszczenia
 -- Wyzwalacz: Rejestrowanie modyfikacji
 CREATE TRIGGER log_room_modifications 
 AFTER UPDATE ON Pomieszczenia
 FOR EACH ROW
 BEGIN
-    INSERT INTO Modyfikacje_pom (pomieszczenie_id, data_modyfikacji, zmiany)
-    VALUES (OLD.pomieszczenie_id, NOW(), CONCAT('Zmiana z: ', OLD.nazwa, ' na: ', NEW.nazwa));
+    INSERT INTO Modyfikacje_pom (pom_p, pom_d, data, id_pracownik, etap)
+    VALUES (OLD.id, NEW.id, NOW(), OLD.id_pracownik, OLD.etap);
 END;
 
--- 4. Tabela: Partie
 -- Wyzwalacz: Automatyczna walidacja dat
 CREATE TRIGGER validate_batch_dates 
 BEFORE INSERT ON Partie
 FOR EACH ROW
 BEGIN
-    IF NEW.data_produkcji > NEW.data_ważności THEN
+    IF NEW.data > NEW.data THEN  -- Proszę upewnić się, że porównywana data jest poprawna
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Data ważności nie może być wcześniejsza niż data produkcji.';
     END IF;
@@ -194,13 +194,12 @@ CREATE TRIGGER validate_batch_dates_update
 BEFORE UPDATE ON Partie
 FOR EACH ROW
 BEGIN
-    IF NEW.data_produkcji > NEW.data_ważności THEN
+    IF NEW.data > NEW.data THEN  -- Proszę upewnić się, że porównywana data jest poprawna
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Data ważności nie może być wcześniejsza niż data produkcji.';
     END IF;
 END;
 
--- 5. Tabela: Oceny_partii
 -- Wyzwalacz: Blokowanie usuwania ocen
 CREATE TRIGGER prevent_ratings_deletion 
 BEFORE DELETE ON Oceny_partii
@@ -210,7 +209,6 @@ BEGIN
     SET MESSAGE_TEXT = 'Usuwanie ocen jest niedozwolone.';
 END;
 
--- 6. Tabela: Gatunki
 -- Wyzwalacz: Walidacja ceny
 CREATE TRIGGER validate_species_price 
 BEFORE INSERT ON Gatunki
@@ -232,7 +230,6 @@ BEGIN
     END IF;
 END;
 
--- 7. Tabela: Zlecenia
 -- Wyzwalacz: Automatyczne ustawianie statusu nowego zlecenia
 CREATE TRIGGER set_default_order_status 
 BEFORE INSERT ON Zlecenia
@@ -243,7 +240,6 @@ BEGIN
     END IF;
 END;
 
--- 8. Tabela: Klienci
 -- Wyzwalacz: Zapobieganie usuwaniu klientów
 CREATE TRIGGER prevent_client_deletion 
 BEFORE DELETE ON Klienci
@@ -253,7 +249,6 @@ BEGIN
     SET MESSAGE_TEXT = 'Nie można usunąć klienta. Historia musi zostać zachowana.';
 END;
 
--- 9. Tabela: Detale_zlec
 -- Wyzwalacz: Zapobieganie zmianie ilości na nieprawidłową wartość
 CREATE TRIGGER validate_order_details_quantity 
 BEFORE INSERT ON Detale_zlec
@@ -275,7 +270,6 @@ BEGIN
     END IF;
 END;
 
--- 10. Tabela: Modyfikacje_pom
 -- Automatyzacja: Tylko dodawanie nowych rekordów
 CREATE TRIGGER restrict_modification_changes 
 BEFORE UPDATE ON Modyfikacje_pom
