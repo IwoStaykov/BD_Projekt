@@ -134,3 +134,161 @@ INSERT INTO Oceny_partii (id, id_partii, id_detale, id_pracownik, ocena, etap, d
 
 INSERT INTO Modyfikacje_pom (id, id_parti, pom_p, pom_d, data, id_pracownik, etap) VALUES (1, 1, 1, 2, '2023-11-21', 1, 1);
 
+
+
+-- 2. Tabela: Uprawnienia
+-- Wyzwalacz: Blokowanie zmian przez osoby inne niż 'Menedżer'
+CREATE TRIGGER restrict_permissions_modifications 
+BEFORE INSERT ON Uprawnienia
+FOR EACH ROW
+BEGIN
+    IF CURRENT_USER() NOT LIKE '%menedzer%' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Tylko Menedżer może modyfikować uprawnienia.';
+    END IF;
+END;
+
+CREATE TRIGGER restrict_permissions_modifications_update
+BEFORE UPDATE ON Uprawnienia
+FOR EACH ROW
+BEGIN
+    IF CURRENT_USER() NOT LIKE '%menedzer%' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Tylko Menedżer może modyfikować uprawnienia.';
+    END IF;
+END;
+
+CREATE TRIGGER restrict_permissions_modifications_delete
+BEFORE DELETE ON Uprawnienia
+FOR EACH ROW
+BEGIN
+    IF CURRENT_USER() NOT LIKE '%menedzer%' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Tylko Menedżer może modyfikować uprawnienia.';
+    END IF;
+END;
+
+-- 3. Tabela: Pomieszczenia
+-- Wyzwalacz: Rejestrowanie modyfikacji
+CREATE TRIGGER log_room_modifications 
+AFTER UPDATE ON Pomieszczenia
+FOR EACH ROW
+BEGIN
+    INSERT INTO Modyfikacje_pom (pomieszczenie_id, data_modyfikacji, zmiany)
+    VALUES (OLD.pomieszczenie_id, NOW(), CONCAT('Zmiana z: ', OLD.nazwa, ' na: ', NEW.nazwa));
+END;
+
+-- 4. Tabela: Partie
+-- Wyzwalacz: Automatyczna walidacja dat
+CREATE TRIGGER validate_batch_dates 
+BEFORE INSERT ON Partie
+FOR EACH ROW
+BEGIN
+    IF NEW.data_produkcji > NEW.data_ważności THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Data ważności nie może być wcześniejsza niż data produkcji.';
+    END IF;
+END;
+
+CREATE TRIGGER validate_batch_dates_update
+BEFORE UPDATE ON Partie
+FOR EACH ROW
+BEGIN
+    IF NEW.data_produkcji > NEW.data_ważności THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Data ważności nie może być wcześniejsza niż data produkcji.';
+    END IF;
+END;
+
+-- 5. Tabela: Oceny_partii
+-- Wyzwalacz: Blokowanie usuwania ocen
+CREATE TRIGGER prevent_ratings_deletion 
+BEFORE DELETE ON Oceny_partii
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Usuwanie ocen jest niedozwolone.';
+END;
+
+-- 6. Tabela: Gatunki
+-- Wyzwalacz: Walidacja ceny
+CREATE TRIGGER validate_species_price 
+BEFORE INSERT ON Gatunki
+FOR EACH ROW
+BEGIN
+    IF NEW.cena < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Cena gatunku nie może być ujemna.';
+    END IF;
+END;
+
+CREATE TRIGGER validate_species_price_update
+BEFORE UPDATE ON Gatunki
+FOR EACH ROW
+BEGIN
+    IF NEW.cena < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Cena gatunku nie może być ujemna.';
+    END IF;
+END;
+
+-- 7. Tabela: Zlecenia
+-- Wyzwalacz: Automatyczne ustawianie statusu nowego zlecenia
+CREATE TRIGGER set_default_order_status 
+BEFORE INSERT ON Zlecenia
+FOR EACH ROW
+BEGIN
+    IF NEW.status IS NULL THEN
+        SET NEW.status = 'Nowe';
+    END IF;
+END;
+
+-- 8. Tabela: Klienci
+-- Wyzwalacz: Zapobieganie usuwaniu klientów
+CREATE TRIGGER prevent_client_deletion 
+BEFORE DELETE ON Klienci
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Nie można usunąć klienta. Historia musi zostać zachowana.';
+END;
+
+-- 9. Tabela: Detale_zlec
+-- Wyzwalacz: Zapobieganie zmianie ilości na nieprawidłową wartość
+CREATE TRIGGER validate_order_details_quantity 
+BEFORE INSERT ON Detale_zlec
+FOR EACH ROW
+BEGIN
+    IF NEW.ilosc <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Ilość w szczegółach zlecenia musi być większa od zera.';
+    END IF;
+END;
+
+CREATE TRIGGER validate_order_details_quantity_update
+BEFORE UPDATE ON Detale_zlec
+FOR EACH ROW
+BEGIN
+    IF NEW.ilosc <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Ilość w szczegółach zlecenia musi być większa od zera.';
+    END IF;
+END;
+
+-- 10. Tabela: Modyfikacje_pom
+-- Automatyzacja: Tylko dodawanie nowych rekordów
+CREATE TRIGGER restrict_modification_changes 
+BEFORE UPDATE ON Modyfikacje_pom
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Zmiana logów modyfikacji pomieszczeń jest zabroniona.';
+END;
+
+CREATE TRIGGER restrict_modification_changes_delete 
+BEFORE DELETE ON Modyfikacje_pom
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Usuwanie logów modyfikacji pomieszczeń jest zabronione.';
+END;
