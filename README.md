@@ -13,23 +13,5 @@ Informatyka Techniczna '22
 [Raport w Latex](https://www.overleaf.com/project/670420f1d05a1e187de2e993)
 
 ## Struktura bazy danych
-### Główne tabele:
-#### Klienci:
 
-Przechowuje dane klientów, takie jak imię, nazwisko, firma, adres e-mail.
-Powiązania z tabelą Zlecenia.
-#### Zlecenia:
-
-Rejestruje zamówienia klientów, w tym daty, szczegóły zamówienia i powiązane partie.
-Partie:
-
-Obejmuje informacje o partiach produktów, w tym etap rozwoju, daty i lokalizacje.
-#### Pracownicy:
-
-Dane o pracownikach zarządzających systemem, w tym uprawnienia i przypisania do pomieszczeń.
-#### Gatunki:
-
-Przechowuje informacje o gatunkach produktów, takie jak nazwa i cena.
-#### Pomieszczenia:
-
-Lokalizacje przechowywania i przetwarzania partii.
+![Diagram ERD](https://github.com/IwoStaykov/BD_Projekt/blob/main/Kompletny%20Diagram%20ERD.jpg)
